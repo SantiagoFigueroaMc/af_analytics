@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Apps Flyer Analytics</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="app-shell">
+        <aside class="sidebar" aria-label="Sidebar navigation">
+            <button class="sidebar-button active" type="button" aria-label="Upload CSV">
+                <span class="sidebar-icon">⇪</span>
+            </button>
+            <button class="sidebar-button" type="button" aria-label="Data preview">
+                <span class="sidebar-icon">▣</span>
+            </button>
+            <button class="sidebar-button" type="button" aria-label="Filters">
+                <span class="sidebar-icon">◫</span>
+            </button>
+            <button class="sidebar-button" type="button" aria-label="Upload area">
+                <span class="sidebar-icon">⎈</span>
+            </button>
+        </aside>
+
+        <main class="main-panel">
+            <div class="selection-bar">
+                <label class="file-picker" for="file-upload">
+                    <span class="picker-label">Seleccionar archivo</span>
+                </label>
+                <span class="selection-status">Sin archivos seleccionados</span>
+            </div>
+
+            <div class="content-panel">
+                <div class="available-dbs">
+                    <h2>Available CSV files</h2>
+                </div>
+
+                <div class="container">
+                    <table id="main-table"></table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <input 
+        type="file" 
+        name="fil-upload" 
+        id="file-upload"
+        accept=".csv,text/csv"
+        hidden>
+
+    <script type="module" src="main.js"></script>
+</body>
+</html>
