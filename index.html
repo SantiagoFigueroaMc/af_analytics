@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,38 +8,57 @@
 </head>
 <body>
     <div class="app-shell">
-        <aside class="sidebar" aria-label="Sidebar navigation">
-            <button class="sidebar-button active" type="button" aria-label="Upload CSV">
+        <aside class="sidebar" aria-label="Navegación principal">
+            <button class="sidebar-button active" type="button" data-view="upload-view" aria-label="Cargar archivo" aria-current="page">
                 <span class="sidebar-icon">⇪</span>
+                <span class="sidebar-label">Cargar</span>
             </button>
-            <button class="sidebar-button" type="button" aria-label="Data preview">
+            <button class="sidebar-button" type="button" data-view="select-view" aria-label="Seleccionar archivo">
                 <span class="sidebar-icon">▣</span>
+                <span class="sidebar-label">Archivos</span>
             </button>
-            <button class="sidebar-button" type="button" aria-label="Filters">
+            <button class="sidebar-button" type="button" data-view="table-view" aria-label="Ver tabla" disabled>
                 <span class="sidebar-icon">◫</span>
-            </button>
-            <button class="sidebar-button" type="button" aria-label="Upload area">
-                <span class="sidebar-icon">⎈</span>
+                <span class="sidebar-label">Tabla</span>
             </button>
         </aside>
 
         <main class="main-panel">
-            <div class="selection-bar">
-                <label class="file-picker" for="file-upload">
-                    <span class="picker-label">Seleccionar archivo</span>
-                </label>
-                <span class="selection-status">Sin archivos seleccionados</span>
-            </div>
-
-            <div class="content-panel">
-                <div class="available-dbs">
-                    <h2>Available CSV files</h2>
+            <section class="view-panel active" id="upload-view" aria-labelledby="upload-title">
+                <div class="view-heading">
+                    <p class="eyebrow">Paso 1</p>
+                    <h1 id="upload-title">Cargar archivo CSV</h1>
+                    <p>Agrega un archivo CSV para comenzar a trabajar con sus datos.</p>
                 </div>
+                <div class="upload-card">
+                    <label class="file-picker" for="file-upload">
+                        <span class="picker-label">Seleccionar archivo CSV</span>
+                    </label>
+                    <span class="selection-status">Sin archivos seleccionados</span>
+                </div>
+            </section>
 
+            <section class="view-panel" id="select-view" aria-labelledby="select-title" hidden>
+                <div class="view-heading">
+                    <p class="eyebrow">Paso 2</p>
+                    <h1 id="select-title">Seleccionar archivo</h1>
+                    <p>Elige uno de los archivos CSV disponibles para abrirlo en la tabla.</p>
+                </div>
+                <div class="available-dbs"></div>
+            </section>
+
+            <section class="view-panel table-view" id="table-view" aria-labelledby="table-title" hidden>
+                <div class="view-heading table-heading">
+                    <div>
+                        <p class="eyebrow">Paso 3</p>
+                        <h1 id="table-title">Tabla de datos</h1>
+                    </div>
+                    <span class="selection-status">Sin archivos seleccionados</span>
+                </div>
                 <div class="container">
                     <table id="main-table"></table>
                 </div>
-            </div>
+            </section>
         </main>
     </div>
 
