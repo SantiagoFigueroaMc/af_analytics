@@ -1,8 +1,6 @@
-import {
-    getAvailableDatabases,
-    processCSV,
-} from "./scripts/process_file.js";
-import { loadDataToTable } from "./scripts/components.js";
+import { processCSV } from "./scripts/csv.js";
+import { getAvailableDatabases } from "./scripts/database.js";
+import { loadDataToTable } from "./scripts/table.js";
 
 const fileInput = document.querySelector("input#file-upload");
 const availableDbs = document.querySelector(".available-dbs");
