@@ -2,6 +2,7 @@ import { loadDatabase } from "./database.js";
 
 const PAGE_SIZE = 20;
 const ALL_FILTER_VALUE = "";
+const NON_EMPTY_FILTER_VALUE = "__non-empty__";
 const COLUMN_CONFIG_PREFIX = "csv-column-config:";
 
 let currentPage = 0;
@@ -92,12 +93,18 @@ function renderColumnMenu(databaseName, headers, tableElement) {
                 return;
             }
 
+            if (!checkbox.checked) {
+                activeFilters.delete(header);
+            }
             visibleHeaders = headers.filter((column) => (
                 column === header ? checkbox.checked : visibleHeaders.includes(column)
             ));
             saveColumnConfig(databaseName);
+            applyFilters();
+            currentPage = 0;
             renderTableHeader(tableElement);
             renderPage(tableElement);
+            renderPagination(tableElement);
         });
         label.append(checkbox, ` ${header}`);
         grid.append(label);
@@ -122,6 +129,12 @@ function renderTableHeader(tableElement) {
         allOption.value = ALL_FILTER_VALUE;
         allOption.textContent = "All";
         filter.append(allOption);
+
+        const nonEmptyOption = document.createElement("option");
+        nonEmptyOption.value = NON_EMPTY_FILTER_VALUE;
+        nonEmptyOption.dataset.filterValue = NON_EMPTY_FILTER_VALUE;
+        nonEmptyOption.textContent = "No vacío";
+        filter.append(nonEmptyOption);
 
         const values = [...new Set(allRows.map((row) => String(row[header] ?? "")))].sort(
             (first, second) => first.localeCompare(second),
@@ -163,7 +176,9 @@ function renderTableHeader(tableElement) {
 
 function applyFilters() {
     currentRows = allRows.filter((row) => [...activeFilters].every(
-        ([header, value]) => String(row[header] ?? "") === value,
+        ([header, value]) => value === NON_EMPTY_FILTER_VALUE
+            ? String(row[header] ?? "") !== ""
+            : String(row[header] ?? "") === value,
     ));
 }
 
