@@ -99,6 +99,21 @@ input {
   flex-direction: column;
 }
 
+.app-status {
+  min-height: 0;
+  padding: 0 32px;
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 600;
+  overflow: hidden;
+  transition: min-height 120ms ease, padding 120ms ease;
+}
+
+.app-status:not([hidden]) {
+  min-height: 38px;
+  padding-top: 12px;
+}
+
 .selection-bar {
   display: flex;
   align-items: center;

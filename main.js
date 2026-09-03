@@ -1,15 +1,21 @@
-import { processCSV } from "./scripts/csv.js";
+import { processCSV } from "./scripts/csv.js?v=2";
 import {
     deleteDatabase,
     getAvailableDatabases,
     renameDatabase,
 } from "./scripts/database.js";
-import { loadDataToTable } from "./scripts/table.js";
+import { loadDataToTable } from "./scripts/table.js?v=2";
 
 const fileInput = document.querySelector("input#file-upload");
 const availableDbs = document.querySelector(".available-dbs");
 const selectionStatuses = document.querySelectorAll(".selection-status");
 const sidebarButtons = document.querySelectorAll(".sidebar-button");
+const appStatus = document.querySelector(".app-status");
+
+function setAppStatus(message = "") {
+    appStatus.textContent = message;
+    appStatus.hidden = !message;
+}
 
 function setView(viewId) {
     document.querySelectorAll(".view-panel").forEach((view) => {
@@ -93,16 +99,21 @@ function renderDatabases(databases) {
             openButton.textContent = "Cargando...";
 
             try {
-                await loadDataToTable(databaseName);
+                setAppStatus(`Abriendo ${buttonLabel}...`);
+                await loadDataToTable(databaseName, { onStatus: setAppStatus });
                 setSelectionStatus(buttonLabel);
                 document.querySelector('[data-view="table-view"]').disabled = false;
                 setView("table-view");
             } catch (error) {
                 console.error("Error loading CSV data", error);
+                setAppStatus("No se pudo abrir el archivo seleccionado.");
             } finally {
                 openButton.disabled = false;
                 openButton.removeAttribute("aria-busy");
                 openButton.textContent = buttonLabel;
+                if (document.querySelector(".app-status")?.textContent.startsWith("Abriendo")) {
+                    setAppStatus();
+                }
             }
         });
 
@@ -165,13 +176,18 @@ fileInput.addEventListener("change", async () => {
     }
 
     try {
-        await processCSV(file);
+        fileInput.disabled = true;
+        setAppStatus(`Cargando ${file.name}...`);
+        await processCSV(file, { onProgress: setAppStatus });
         await loadAvailableDatabases();
         setSelectionStatus(file.name);
         setView("select-view");
+        setAppStatus("Archivo cargado. Selecciona un archivo para mostrar.");
     } catch (error) {
         console.error("Error processing file", error.message);
+        setAppStatus(`No se pudo cargar el archivo: ${error.message}`);
     } finally {
+        fileInput.disabled = false;
         fileInput.value = "";
     }
 });

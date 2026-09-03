@@ -11,6 +11,9 @@ let currentRows = [];
 let currentHeaders = [];
 let visibleHeaders = [];
 const activeFilters = new Map();
+let reportStatus = () => {};
+
+const yieldToBrowser = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 function showMessage(tableElement, message) {
     const row = tableElement.insertRow();
@@ -87,24 +90,32 @@ function renderColumnMenu(databaseName, headers, tableElement) {
         const checkbox = document.createElement("input");
         checkbox.type = "checkbox";
         checkbox.checked = visibleHeaders.includes(header);
-        checkbox.addEventListener("change", () => {
+        checkbox.addEventListener("change", async () => {
             if (!checkbox.checked && visibleHeaders.length === 1) {
                 checkbox.checked = true;
                 return;
             }
 
-            if (!checkbox.checked) {
-                activeFilters.delete(header);
+            const checkboxes = [...grid.querySelectorAll("input")];
+            checkboxes.forEach((input) => { input.disabled = true; });
+            try {
+                if (!checkbox.checked) {
+                    activeFilters.delete(header);
+                }
+                visibleHeaders = headers.filter((column) => (
+                    column === header ? checkbox.checked : visibleHeaders.includes(column)
+                ));
+                saveColumnConfig(databaseName);
+                reportStatus("Actualizando columnas...");
+                await applyFilters();
+                currentPage = 0;
+                await renderTableHeader(tableElement);
+                renderPage(tableElement);
+                renderPagination(tableElement);
+            } finally {
+                checkboxes.forEach((input) => { input.disabled = false; });
+                reportStatus();
             }
-            visibleHeaders = headers.filter((column) => (
-                column === header ? checkbox.checked : visibleHeaders.includes(column)
-            ));
-            saveColumnConfig(databaseName);
-            applyFilters();
-            currentPage = 0;
-            renderTableHeader(tableElement);
-            renderPage(tableElement);
-            renderPagination(tableElement);
         });
         label.append(checkbox, ` ${header}`);
         grid.append(label);
@@ -113,11 +124,11 @@ function renderColumnMenu(databaseName, headers, tableElement) {
     tableElement.before(menu);
 }
 
-function renderTableHeader(tableElement) {
+async function renderTableHeader(tableElement) {
     tableElement.tHead?.remove();
     const headerRow = tableElement.createTHead().insertRow();
 
-    visibleHeaders.forEach((header) => {
+    visibleHeaders.forEach(async (header) => {
         const cell = document.createElement("th");
         cell.scope = "col";
         cell.append(`${header} `);
@@ -136,16 +147,28 @@ function renderTableHeader(tableElement) {
         nonEmptyOption.textContent = "No vacío";
         filter.append(nonEmptyOption);
 
-        const values = [...new Set(allRows.map((row) => String(row[header] ?? "")))].sort(
-            (first, second) => first.localeCompare(second),
-        );
-        values.forEach((value, index) => {
+        const valuesSet = new Set();
+        for (let index = 0; index < allRows.length; index += 1) {
+            valuesSet.add(String(allRows[index][header] ?? ""));
+            if (index > 0 && index % 5_000 === 0) {
+                reportStatus(`Preparando filtro de ${header}...`);
+                await yieldToBrowser();
+            }
+        }
+        const values = [...valuesSet].sort((first, second) => first.localeCompare(second));
+        values.slice(0, 2_000).forEach((value, index) => {
             const option = document.createElement("option");
             option.value = `value-${index}`;
             option.dataset.filterValue = value;
             option.textContent = value || "(empty)";
             filter.append(option);
         });
+        if (values.length > 2_000) {
+            const option = document.createElement("option");
+            option.disabled = true;
+            option.textContent = `(${values.length - 2_000} valores omitidos)`;
+            filter.append(option);
+        }
 
         const selectedValue = activeFilters.get(header);
         if (selectedValue !== undefined) {
@@ -157,16 +180,18 @@ function renderTableHeader(tableElement) {
             }
         }
 
-        filter.addEventListener("change", () => {
+        filter.addEventListener("change", async () => {
             if (filter.value !== ALL_FILTER_VALUE) {
                 activeFilters.set(header, filter.selectedOptions[0].dataset.filterValue);
             } else {
                 activeFilters.delete(header);
             }
-            applyFilters();
+            reportStatus("Aplicando filtro...");
+            await applyFilters();
             currentPage = 0;
             renderPage(tableElement);
             renderPagination(tableElement);
+            reportStatus();
         });
 
         cell.append(filter);
@@ -174,12 +199,20 @@ function renderTableHeader(tableElement) {
     });
 }
 
-function applyFilters() {
-    currentRows = allRows.filter((row) => [...activeFilters].every(
-        ([header, value]) => value === NON_EMPTY_FILTER_VALUE
+async function applyFilters() {
+    const filters = [...activeFilters];
+    currentRows = [];
+    for (let index = 0; index < allRows.length; index += 1) {
+        const row = allRows[index];
+        if (filters.every(([header, value]) => value === NON_EMPTY_FILTER_VALUE
             ? String(row[header] ?? "") !== ""
-            : String(row[header] ?? "") === value,
-    ));
+            : String(row[header] ?? "") === value)) {
+            currentRows.push(row);
+        }
+        if (index > 0 && index % 5_000 === 0) {
+            await yieldToBrowser();
+        }
+    }
 }
 
 function renderPagination(tableElement) {
@@ -221,7 +254,7 @@ function renderPagination(tableElement) {
     tableElement.after(controls);
 }
 
-export async function loadDataToTable(indexedDbName) {
+export async function loadDataToTable(indexedDbName, { onStatus = () => {} } = {}) {
     const tableElement = document.querySelector("table#main-table");
 
     if (!tableElement) {
@@ -231,6 +264,8 @@ export async function loadDataToTable(indexedDbName) {
         throw new Error("A database name is required");
     }
 
+    reportStatus = onStatus;
+    reportStatus("Leyendo archivo seleccionado...");
     tableElement.replaceChildren();
     document.querySelector(".table-pagination")?.remove();
     document.querySelector(".column-menu")?.remove();
@@ -246,6 +281,7 @@ export async function loadDataToTable(indexedDbName) {
 
     if (rows.length === 0) {
         showMessage(tableElement, "The selected CSV file has no data.");
+        reportStatus();
         return;
     }
 
@@ -255,7 +291,9 @@ export async function loadDataToTable(indexedDbName) {
     visibleHeaders = getColumnConfig(indexedDbName, currentHeaders);
     currentPage = 0;
     renderColumnMenu(indexedDbName, currentHeaders, tableElement);
-    renderTableHeader(tableElement);
+    reportStatus("Preparando columnas...");
+    await renderTableHeader(tableElement);
     renderPage(tableElement);
     renderPagination(tableElement);
+    reportStatus();
 }
