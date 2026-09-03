@@ -11,7 +11,7 @@ let currentRows = [];
 let currentHeaders = [];
 let visibleHeaders = [];
 const activeFilters = new Map();
-let reportStatus = () => {};
+let reportStatus = () => { };
 
 const yieldToBrowser = () => new Promise((resolve) => setTimeout(resolve, 0));
 
@@ -254,7 +254,7 @@ function renderPagination(tableElement) {
     tableElement.after(controls);
 }
 
-export async function loadDataToTable(indexedDbName, { onStatus = () => {} } = {}) {
+export async function loadDataToTable(indexedDbName, { onStatus = () => { } } = {}) {
     const tableElement = document.querySelector("table#main-table");
 
     if (!tableElement) {

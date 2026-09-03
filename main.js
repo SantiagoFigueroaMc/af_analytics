@@ -1,10 +1,10 @@
-import { processCSV } from "./scripts/csv.js?v=2";
+import { processCSV } from "./scripts/csv.js?v=3";
 import {
     deleteDatabase,
     getAvailableDatabases,
     renameDatabase,
 } from "./scripts/database.js";
-import { loadDataToTable } from "./scripts/table.js?v=2";
+import { loadDataToTable } from "./scripts/table.js?v=3";
 
 const fileInput = document.querySelector("input#file-upload");
 const availableDbs = document.querySelector(".available-dbs");
@@ -97,10 +97,12 @@ function renderDatabases(databases) {
             openButton.disabled = true;
             openButton.setAttribute("aria-busy", "true");
             openButton.textContent = "Cargando...";
+            let loadedSuccessfully = false;
 
             try {
                 setAppStatus(`Abriendo ${buttonLabel}...`);
                 await loadDataToTable(databaseName, { onStatus: setAppStatus });
+                loadedSuccessfully = true;
                 setSelectionStatus(buttonLabel);
                 document.querySelector('[data-view="table-view"]').disabled = false;
                 setView("table-view");
@@ -111,7 +113,7 @@ function renderDatabases(databases) {
                 openButton.disabled = false;
                 openButton.removeAttribute("aria-busy");
                 openButton.textContent = buttonLabel;
-                if (document.querySelector(".app-status")?.textContent.startsWith("Abriendo")) {
+                if (loadedSuccessfully) {
                     setAppStatus();
                 }
             }
