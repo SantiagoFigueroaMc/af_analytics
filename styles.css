@@ -385,7 +385,7 @@ input {
 
 #events-table thead th,
 #events-table tbody td {
-  min-width: 100px;
+  min-width: 200px;
   border: 1px solid var(--soft-border);
   padding: 8px;
   font-size: 12px;

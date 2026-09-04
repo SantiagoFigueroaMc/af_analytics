@@ -3,7 +3,8 @@ import { loadDatabase } from "./database.js";
 const PAGE_SIZE = 50;
 const CELL_TRUNCATION_THRESHOLD = 30;
 const CELL_PREVIEW_LENGTH = 20;
-const MIN_COLUMN_WIDTH = 100;
+const MIN_COLUMN_WIDTH = 200;
+const NON_EMPTY_FILTER_VALUE = "__non-empty__";
 const COLUMN_CONFIG_PREFIX = "csv-event-column-config:";
 
 let eventRows = [];
@@ -220,7 +221,9 @@ function renderPage(tableElement) {
 
 function applyFilters() {
     return eventRows.filter((eventRow) => [...activeFilters].every(([header, value]) => (
-        formatCellValue(eventRow[header]) === value
+        value === NON_EMPTY_FILTER_VALUE
+            ? formatCellValue(eventRow[header]) !== ""
+            : formatCellValue(eventRow[header]) === value
     )));
 }
 
@@ -258,6 +261,12 @@ function renderTableHeader(tableElement) {
         allOption.value = "";
         allOption.textContent = "All";
         filter.append(allOption);
+
+        const nonEmptyOption = document.createElement("option");
+        nonEmptyOption.value = NON_EMPTY_FILTER_VALUE;
+        nonEmptyOption.dataset.filterValue = NON_EMPTY_FILTER_VALUE;
+        nonEmptyOption.textContent = "No vacío";
+        filter.append(nonEmptyOption);
 
         const values = [...new Set(eventRows.map((row) => formatCellValue(row[header])))]
             .sort((first, second) => first.localeCompare(second));
