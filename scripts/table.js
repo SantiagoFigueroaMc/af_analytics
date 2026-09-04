@@ -150,6 +150,7 @@ function renderColumnMenu(databaseName, headers, tableElement) {
         visibleHeaders = nextHeaders;
         activeFilters.clear();
         saveColumnConfig(databaseName);
+        renderColumnMenu(databaseName, headers, tableElement);
         reportStatus("Actualizando columnas...");
         await applyFilters();
         currentPage = 0;
