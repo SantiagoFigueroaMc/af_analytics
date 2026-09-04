@@ -1,9 +1,13 @@
 import { loadDatabase } from "./database.js";
 
 const PAGE_SIZE = 50;
+const MAX_CELL_LENGTH = 20;
+const COLUMN_CONFIG_PREFIX = "csv-event-column-config:";
 
 let eventRows = [];
 let eventHeaders = [];
+let visibleHeaders = [];
+const activeFilters = new Map();
 let currentPage = 0;
 
 function showMessage(tableElement, message, columnCount = 1) {
@@ -65,22 +69,185 @@ function formatCellValue(value) {
     return typeof value === "object" ? JSON.stringify(value) : String(value);
 }
 
+function showEventDetails(value) {
+    const dialog = document.createElement("dialog");
+    dialog.className = "event-details-dialog";
+
+    const content = document.createElement("pre");
+    content.textContent = value;
+    const closeButton = document.createElement("button");
+    closeButton.type = "button";
+    closeButton.textContent = "Cerrar";
+    closeButton.addEventListener("click", () => dialog.close());
+    dialog.addEventListener("click", (event) => {
+        if (event.target === dialog) {
+            dialog.close();
+        }
+    });
+    dialog.append(content, closeButton);
+    dialog.addEventListener("close", () => dialog.remove(), { once: true });
+    document.body.append(dialog);
+    dialog.showModal();
+}
+
+function renderCell(cell, value) {
+    if (value.length <= MAX_CELL_LENGTH) {
+        cell.textContent = value;
+        return;
+    }
+
+    const preview = document.createElement("span");
+    preview.textContent = value.slice(0, MAX_CELL_LENGTH);
+    preview.className = "event-cell-preview";
+    const detailsButton = document.createElement("button");
+    detailsButton.type = "button";
+    detailsButton.className = "event-details-button";
+    detailsButton.textContent = "Ver más";
+    detailsButton.addEventListener("click", () => showEventDetails(value));
+    cell.append(preview, detailsButton);
+}
+
+function getColumnConfig(databaseName) {
+    const savedConfig = localStorage.getItem(`${COLUMN_CONFIG_PREFIX}${databaseName}`);
+    if (!savedConfig) {
+        return [...eventHeaders];
+    }
+
+    try {
+        const savedHeaders = JSON.parse(savedConfig);
+        if (Array.isArray(savedHeaders)) {
+            const configuredHeaders = eventHeaders.filter((header) => savedHeaders.includes(header));
+            if (configuredHeaders.length > 0) {
+                return configuredHeaders;
+            }
+        }
+    } catch (error) {
+        console.warn("Ignoring invalid event column configuration", error);
+    }
+
+    return [...eventHeaders];
+}
+
+function saveColumnConfig(databaseName) {
+    localStorage.setItem(
+        `${COLUMN_CONFIG_PREFIX}${databaseName}`,
+        JSON.stringify(visibleHeaders),
+    );
+}
+
+function renderColumnMenu(databaseName, tableElement) {
+    document.querySelector(".events-column-menu")?.remove();
+
+    const menu = document.createElement("details");
+    menu.className = "column-menu events-column-menu";
+    const summary = document.createElement("summary");
+    summary.textContent = "Displayed columns";
+    menu.append(summary);
+
+    const grid = document.createElement("div");
+    grid.className = "column-grid";
+    menu.append(grid);
+
+    eventHeaders.forEach((header) => {
+        const label = document.createElement("label");
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.checked = visibleHeaders.includes(header);
+        checkbox.addEventListener("change", () => {
+            if (!checkbox.checked && visibleHeaders.length === 1) {
+                checkbox.checked = true;
+                return;
+            }
+
+            visibleHeaders = eventHeaders.filter((column) => (
+                column === header ? checkbox.checked : visibleHeaders.includes(column)
+            ));
+            activeFilters.delete(header);
+            saveColumnConfig(databaseName);
+            renderColumnMenu(databaseName, tableElement);
+            renderTableHeader(tableElement);
+            currentPage = 0;
+            renderPage(tableElement);
+            renderPagination(tableElement);
+        });
+        label.append(checkbox, ` ${header}`);
+        grid.append(label);
+    });
+
+    tableElement.before(menu);
+}
+
 function renderPage(tableElement) {
     const body = tableElement.tBodies[0] || tableElement.createTBody();
     body.replaceChildren();
 
     const start = currentPage * PAGE_SIZE;
-    eventRows.slice(start, start + PAGE_SIZE).forEach((eventRow) => {
+    const filteredRows = applyFilters();
+    filteredRows.slice(start, start + PAGE_SIZE).forEach((eventRow) => {
         const row = body.insertRow();
-        eventHeaders.forEach((header) => {
-            row.insertCell().textContent = formatCellValue(eventRow[header]);
+        visibleHeaders.forEach((header) => {
+            const cell = row.insertCell();
+            renderCell(cell, formatCellValue(eventRow[header]));
         });
+    });
+}
+
+function applyFilters() {
+    return eventRows.filter((eventRow) => [...activeFilters].every(([header, value]) => (
+        formatCellValue(eventRow[header]) === value
+    )));
+}
+
+function renderTableHeader(tableElement) {
+    tableElement.tHead?.remove();
+    const headerRow = tableElement.createTHead().insertRow();
+
+    visibleHeaders.forEach((header) => {
+        const cell = document.createElement("th");
+        cell.scope = "col";
+        cell.append(`${header} `);
+
+        const filter = document.createElement("select");
+        filter.setAttribute("aria-label", `Filter ${header}`);
+
+        const allOption = document.createElement("option");
+        allOption.value = "";
+        allOption.textContent = "All";
+        filter.append(allOption);
+
+        const values = [...new Set(eventRows.map((row) => formatCellValue(row[header])))]
+            .sort((first, second) => first.localeCompare(second));
+        values.slice(0, 2_000).forEach((value, index) => {
+            const option = document.createElement("option");
+            option.value = `value-${index}`;
+            option.dataset.filterValue = value;
+            option.textContent = value || "(empty)";
+            filter.append(option);
+        });
+
+        filter.value = [...filter.options].find(
+            (option) => option.dataset.filterValue === activeFilters.get(header),
+        )?.value || "";
+
+        filter.addEventListener("change", () => {
+            if (filter.value) {
+                activeFilters.set(header, filter.selectedOptions[0].dataset.filterValue);
+            } else {
+                activeFilters.delete(header);
+            }
+            currentPage = 0;
+            renderPage(tableElement);
+            renderPagination(tableElement);
+        });
+
+        cell.append(filter);
+        headerRow.append(cell);
     });
 }
 
 function renderPagination(tableElement) {
     document.querySelector(".events-pagination")?.remove();
-    const totalPages = Math.ceil(eventRows.length / PAGE_SIZE);
+    const totalPages = Math.ceil(applyFilters().length / PAGE_SIZE);
     if (totalPages <= 1) {
         return;
     }
@@ -128,6 +295,8 @@ export async function loadDataToEvents(indexedDbName, { onStatus = () => {} } = 
     tableElement.replaceChildren();
     document.querySelector(".events-pagination")?.remove();
     document.querySelector(".events-warning")?.remove();
+    document.querySelector(".events-column-menu")?.remove();
+    activeFilters.clear();
     onStatus("Leyendo eventos...");
 
     const rows = await loadDatabase(indexedDbName);
@@ -141,6 +310,7 @@ export async function loadDataToEvents(indexedDbName, { onStatus = () => {} } = 
     const { validRows, invalidRows } = parseEventValues(rows, eventHeader);
     eventRows = validRows;
     eventHeaders = getEventHeaders(eventRows);
+    visibleHeaders = getColumnConfig(indexedDbName);
     currentPage = 0;
 
     if (invalidRows.length > 0) {
@@ -156,13 +326,8 @@ export async function loadDataToEvents(indexedDbName, { onStatus = () => {} } = 
     } else if (eventHeaders.length === 0) {
         showMessage(tableElement, "The selected CSV file has no event object keys.");
     } else {
-        const headerRow = tableElement.createTHead().insertRow();
-        eventHeaders.forEach((header) => {
-            const headerCell = document.createElement("th");
-            headerCell.scope = "col";
-            headerCell.textContent = header;
-            headerRow.append(headerCell);
-        });
+        renderColumnMenu(indexedDbName, tableElement);
+        renderTableHeader(tableElement);
         renderPage(tableElement);
         renderPagination(tableElement);
     }

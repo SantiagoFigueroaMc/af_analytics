@@ -387,6 +387,19 @@ input {
   font-weight: 700;
 }
 
+#events-table thead th select {
+  display: block;
+  width: 100%;
+  min-height: 24px;
+  margin-top: 6px;
+  border: 1px solid #bec7d1;
+  border-radius: 4px;
+  background: #fff;
+  color: #2d3137;
+  padding: 4px 6px;
+  font-size: 11px;
+}
+
 #events-table tbody td {
   color: #2b3033;
   background: rgba(255, 255, 255, 0.65);
@@ -398,6 +411,61 @@ input {
 
 #events-table tbody tr:hover td {
   background: rgba(222, 234, 255, 0.5);
+}
+
+.event-cell-preview {
+  display: inline-block;
+  max-width: 20ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.event-details-button {
+  margin-left: 6px;
+  padding: 2px 5px;
+  border: 1px solid var(--soft-border);
+  border-radius: 4px;
+  background: #fff;
+  color: #1e5fd5;
+  cursor: pointer;
+  font-size: 11px;
+}
+
+.event-details-button:hover {
+  background: rgba(61, 136, 247, 0.08);
+}
+
+.event-details-dialog {
+  width: min(680px, calc(100vw - 32px));
+  max-height: 80vh;
+  border: 1px solid var(--soft-border);
+  border-radius: 8px;
+  padding: 18px;
+  color: var(--primary-text);
+  background: var(--panel-bg);
+}
+
+.event-details-dialog::backdrop {
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.event-details-dialog pre {
+  max-height: 60vh;
+  margin: 0 0 16px;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font: inherit;
+}
+
+.event-details-dialog button {
+  padding: 5px 10px;
+  border: 1px solid var(--soft-border);
+  border-radius: 5px;
+  background: #fff;
+  cursor: pointer;
 }
 
 .column-menu {
@@ -440,6 +508,12 @@ input {
   width: 100%;
   white-space: nowrap;
   min-width: 0;
+}
+
+.events-column-menu label {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .column-menu input {
