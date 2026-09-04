@@ -94,6 +94,7 @@ input {
 
 .main-panel {
   flex: 1;
+  min-width: 0;
   background: var(--panel-bg);
   display: flex;
   flex-direction: column;
@@ -126,8 +127,14 @@ input {
 
 .view-panel {
   flex: 1;
+  min-width: 0;
   padding: 34px 32px;
   background: rgba(247, 247, 247, 0.92);
+}
+
+.events-view {
+  width: 100%;
+  overflow: hidden;
 }
 
 .view-heading {
@@ -361,9 +368,27 @@ input {
 }
 
 #events-table {
-  width: 100%;
+  width: max-content;
+  min-width: 100%;
   border-collapse: collapse;
   background: rgba(255, 255, 255, 0.95);
+}
+
+.events-view .container {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.events-column-menu {
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.table-view .column-menu {
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
 }
 
 .events-warning {
@@ -489,8 +514,43 @@ input {
   margin-bottom: 2px;
 }
 
+.column-menu summary::before {
+  display: inline-block;
+  margin-right: 7px;
+  content: "›";
+  font-size: 16px;
+  line-height: 0.8;
+  transform: rotate(0deg);
+  transition: transform 120ms ease;
+  vertical-align: -1px;
+}
+
+.column-menu[open] summary::before {
+  transform: rotate(90deg);
+}
+
 .column-menu summary::-webkit-details-marker {
   display: none;
+}
+
+.column-menu-actions {
+  display: flex;
+  gap: 8px;
+  padding: 0 12px 8px;
+}
+
+.column-menu-actions button {
+  padding: 4px 8px;
+  border: 1px solid var(--soft-border);
+  border-radius: 5px;
+  background: #fff;
+  color: #2f373d;
+  cursor: pointer;
+  font-size: 11px;
+}
+
+.column-menu-actions button:hover {
+  background: rgba(61, 136, 247, 0.08);
 }
 
 .column-grid {

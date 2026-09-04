@@ -1,6 +1,7 @@
 import { loadDatabase } from "./database.js";
 
 const PAGE_SIZE = 20;
+const MAX_CELL_LENGTH = 20;
 const ALL_FILTER_VALUE = "";
 const NON_EMPTY_FILTER_VALUE = "__non-empty__";
 const COLUMN_CONFIG_PREFIX = "csv-column-config:";
@@ -14,6 +15,51 @@ const activeFilters = new Map();
 let reportStatus = () => { };
 
 const yieldToBrowser = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+function formatCellValue(value) {
+    if (value === null || value === undefined) {
+        return "";
+    }
+    return typeof value === "object" ? JSON.stringify(value) : String(value);
+}
+
+function showCellDetails(value) {
+    const dialog = document.createElement("dialog");
+    dialog.className = "event-details-dialog";
+
+    const content = document.createElement("pre");
+    content.textContent = value;
+    const closeButton = document.createElement("button");
+    closeButton.type = "button";
+    closeButton.textContent = "Cerrar";
+    closeButton.addEventListener("click", () => dialog.close());
+    dialog.addEventListener("click", (event) => {
+        if (event.target === dialog) {
+            dialog.close();
+        }
+    });
+    dialog.append(content, closeButton);
+    dialog.addEventListener("close", () => dialog.remove(), { once: true });
+    document.body.append(dialog);
+    dialog.showModal();
+}
+
+function renderCell(cell, value) {
+    if (value.length <= MAX_CELL_LENGTH) {
+        cell.textContent = value;
+        return;
+    }
+
+    const preview = document.createElement("span");
+    preview.className = "event-cell-preview";
+    preview.textContent = value.slice(0, MAX_CELL_LENGTH);
+    const detailsButton = document.createElement("button");
+    detailsButton.type = "button";
+    detailsButton.className = "event-details-button";
+    detailsButton.textContent = "Ver más";
+    detailsButton.addEventListener("click", () => showCellDetails(value));
+    cell.append(preview, detailsButton);
+}
 
 function showMessage(tableElement, message) {
     const row = tableElement.insertRow();
@@ -39,7 +85,7 @@ function renderPage(tableElement) {
         const tableRow = body.insertRow();
         visibleHeaders.forEach((header) => {
             const cell = tableRow.insertCell();
-            cell.textContent = row[header] ?? "";
+            renderCell(cell, formatCellValue(row[header]));
         });
     });
 }
@@ -74,16 +120,47 @@ function saveColumnConfig(databaseName) {
 }
 
 function renderColumnMenu(databaseName, headers, tableElement) {
-    document.querySelector(".column-menu")?.remove();
+    const existingMenu = document.querySelector(".column-menu");
+    const wasOpen = existingMenu?.open || false;
+    existingMenu?.remove();
 
     const menu = document.createElement("details");
     menu.className = "column-menu";
+    menu.open = wasOpen;
     const summary = document.createElement("summary");
     summary.textContent = "Displayed columns";
     menu.append(summary);
+
+    const actions = document.createElement("div");
+    actions.className = "column-menu-actions";
+    const selectAllButton = document.createElement("button");
+    selectAllButton.type = "button";
+    selectAllButton.textContent = "Select all";
+    const selectNoneButton = document.createElement("button");
+    selectNoneButton.type = "button";
+    selectNoneButton.textContent = "Select none";
+    actions.append(selectAllButton, selectNoneButton);
+    menu.append(actions);
+
     const grid = document.createElement("div");
     grid.className = "column-grid";
     menu.append(grid);
+
+    const updateColumns = async (nextHeaders) => {
+        visibleHeaders = nextHeaders;
+        activeFilters.clear();
+        saveColumnConfig(databaseName);
+        reportStatus("Actualizando columnas...");
+        await applyFilters();
+        currentPage = 0;
+        await renderTableHeader(tableElement);
+        renderPage(tableElement);
+        renderPagination(tableElement);
+        reportStatus();
+    };
+
+    selectAllButton.addEventListener("click", () => updateColumns([...headers]));
+    selectNoneButton.addEventListener("click", () => updateColumns([]));
 
     headers.forEach((header) => {
         const label = document.createElement("label");
@@ -91,27 +168,13 @@ function renderColumnMenu(databaseName, headers, tableElement) {
         checkbox.type = "checkbox";
         checkbox.checked = visibleHeaders.includes(header);
         checkbox.addEventListener("change", async () => {
-            if (!checkbox.checked && visibleHeaders.length === 1) {
-                checkbox.checked = true;
-                return;
-            }
-
             const checkboxes = [...grid.querySelectorAll("input")];
             checkboxes.forEach((input) => { input.disabled = true; });
             try {
-                if (!checkbox.checked) {
-                    activeFilters.delete(header);
-                }
                 visibleHeaders = headers.filter((column) => (
                     column === header ? checkbox.checked : visibleHeaders.includes(column)
                 ));
-                saveColumnConfig(databaseName);
-                reportStatus("Actualizando columnas...");
-                await applyFilters();
-                currentPage = 0;
-                await renderTableHeader(tableElement);
-                renderPage(tableElement);
-                renderPagination(tableElement);
+                await updateColumns(visibleHeaders);
             } finally {
                 checkboxes.forEach((input) => { input.disabled = false; });
                 reportStatus();
@@ -121,14 +184,18 @@ function renderColumnMenu(databaseName, headers, tableElement) {
         grid.append(label);
     });
 
-    tableElement.before(menu);
+    const tableContainer = tableElement.closest(".container");
+    tableContainer?.before(menu);
 }
 
 async function renderTableHeader(tableElement) {
     tableElement.tHead?.remove();
+    if (visibleHeaders.length === 0) {
+        return;
+    }
     const headerRow = tableElement.createTHead().insertRow();
 
-    visibleHeaders.forEach(async (header) => {
+    for (const header of visibleHeaders) {
         const cell = document.createElement("th");
         cell.scope = "col";
         cell.append(`${header} `);
@@ -196,7 +263,7 @@ async function renderTableHeader(tableElement) {
 
         cell.append(filter);
         headerRow.append(cell);
-    });
+    }
 }
 
 async function applyFilters() {

@@ -136,17 +136,45 @@ function saveColumnConfig(databaseName) {
 }
 
 function renderColumnMenu(databaseName, tableElement) {
-    document.querySelector(".events-column-menu")?.remove();
+    const existingMenu = document.querySelector(".events-column-menu");
+    const wasOpen = existingMenu?.open || false;
+    existingMenu?.remove();
 
     const menu = document.createElement("details");
     menu.className = "column-menu events-column-menu";
+    menu.open = wasOpen;
     const summary = document.createElement("summary");
     summary.textContent = "Displayed columns";
     menu.append(summary);
 
+    const actions = document.createElement("div");
+    actions.className = "column-menu-actions";
+    const selectAllButton = document.createElement("button");
+    selectAllButton.type = "button";
+    selectAllButton.textContent = "Select all";
+    const selectNoneButton = document.createElement("button");
+    selectNoneButton.type = "button";
+    selectNoneButton.textContent = "Select none";
+    actions.append(selectAllButton, selectNoneButton);
+    menu.append(actions);
+
     const grid = document.createElement("div");
     grid.className = "column-grid";
     menu.append(grid);
+
+    const updateColumns = (nextHeaders) => {
+        visibleHeaders = nextHeaders;
+        activeFilters.clear();
+        saveColumnConfig(databaseName);
+        renderColumnMenu(databaseName, tableElement);
+        renderTableHeader(tableElement);
+        currentPage = 0;
+        renderPage(tableElement);
+        renderPagination(tableElement);
+    };
+
+    selectAllButton.addEventListener("click", () => updateColumns([...eventHeaders]));
+    selectNoneButton.addEventListener("click", () => updateColumns([]));
 
     eventHeaders.forEach((header) => {
         const label = document.createElement("label");
@@ -154,11 +182,6 @@ function renderColumnMenu(databaseName, tableElement) {
         checkbox.type = "checkbox";
         checkbox.checked = visibleHeaders.includes(header);
         checkbox.addEventListener("change", () => {
-            if (!checkbox.checked && visibleHeaders.length === 1) {
-                checkbox.checked = true;
-                return;
-            }
-
             visibleHeaders = eventHeaders.filter((column) => (
                 column === header ? checkbox.checked : visibleHeaders.includes(column)
             ));
@@ -174,7 +197,8 @@ function renderColumnMenu(databaseName, tableElement) {
         grid.append(label);
     });
 
-    tableElement.before(menu);
+    const tableContainer = tableElement.closest(".container");
+    tableContainer?.before(menu);
 }
 
 function renderPage(tableElement) {
