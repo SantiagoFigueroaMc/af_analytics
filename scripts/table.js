@@ -356,7 +356,9 @@ export async function loadDataToTable(indexedDbName, { onStatus = () => { } } = 
 
     currentRows = rows;
     allRows = rows;
-    currentHeaders = [...new Set(rows.flatMap((row) => Object.keys(row)))];
+    currentHeaders = [...new Set(rows.flatMap((row) => Object.keys(row)))].sort((first, second) => (
+        first.localeCompare(second, undefined, { sensitivity: "base" })
+    ));
     visibleHeaders = getColumnConfig(indexedDbName, currentHeaders);
     currentPage = 0;
     renderColumnMenu(indexedDbName, currentHeaders, tableElement);

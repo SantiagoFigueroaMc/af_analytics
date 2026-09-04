@@ -64,7 +64,9 @@ function parseEventValues(rows, eventHeader) {
 }
 
 function getEventHeaders(rows) {
-    return [...new Set(rows.flatMap((row) => Object.keys(row)))];
+    return [...new Set(rows.flatMap((row) => Object.keys(row)))].sort((first, second) => (
+        first.localeCompare(second, undefined, { sensitivity: "base" })
+    ));
 }
 
 function formatCellValue(value) {
