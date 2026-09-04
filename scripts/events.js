@@ -2,13 +2,14 @@ import { loadDatabase } from "./database.js";
 
 const PAGE_SIZE = 50;
 
-let eventValues = [];
+let eventRows = [];
+let eventHeaders = [];
 let currentPage = 0;
 
-function showMessage(tableElement, message) {
+function showMessage(tableElement, message, columnCount = 1) {
     const row = tableElement.insertRow();
     const cell = row.insertCell();
-    cell.colSpan = 1;
+    cell.colSpan = columnCount;
     cell.textContent = message;
 }
 
@@ -23,20 +24,63 @@ function getEventHeader(rows) {
         .find((header) => header.toLowerCase() === "event value");
 }
 
+function parseEventValues(rows, eventHeader) {
+    const validRows = [];
+    const invalidRows = [];
+
+    rows.forEach((row, index) => {
+        const rawValue = String(row[eventHeader] ?? "").trim();
+        if (!rawValue) {
+            invalidRows.push(index + 1);
+            return;
+        }
+
+        let parsedValue;
+        try {
+            parsedValue = JSON.parse(rawValue);
+        } catch {
+            invalidRows.push(index + 1);
+            return;
+        }
+
+        if (!parsedValue || typeof parsedValue !== "object" || Array.isArray(parsedValue)) {
+            invalidRows.push(index + 1);
+            return;
+        }
+
+        validRows.push(parsedValue);
+    });
+
+    return { validRows, invalidRows };
+}
+
+function getEventHeaders(rows) {
+    return [...new Set(rows.flatMap((row) => Object.keys(row)))];
+}
+
+function formatCellValue(value) {
+    if (value === null || value === undefined) {
+        return "";
+    }
+    return typeof value === "object" ? JSON.stringify(value) : String(value);
+}
+
 function renderPage(tableElement) {
     const body = tableElement.tBodies[0] || tableElement.createTBody();
     body.replaceChildren();
 
     const start = currentPage * PAGE_SIZE;
-    eventValues.slice(start, start + PAGE_SIZE).forEach((value) => {
+    eventRows.slice(start, start + PAGE_SIZE).forEach((eventRow) => {
         const row = body.insertRow();
-        row.insertCell().textContent = value;
+        eventHeaders.forEach((header) => {
+            row.insertCell().textContent = formatCellValue(eventRow[header]);
+        });
     });
 }
 
 function renderPagination(tableElement) {
     document.querySelector(".events-pagination")?.remove();
-    const totalPages = Math.ceil(eventValues.length / PAGE_SIZE);
+    const totalPages = Math.ceil(eventRows.length / PAGE_SIZE);
     if (totalPages <= 1) {
         return;
     }
@@ -83,6 +127,7 @@ export async function loadDataToEvents(indexedDbName, { onStatus = () => {} } = 
 
     tableElement.replaceChildren();
     document.querySelector(".events-pagination")?.remove();
+    document.querySelector(".events-warning")?.remove();
     onStatus("Leyendo eventos...");
 
     const rows = await loadDatabase(indexedDbName);
@@ -93,17 +138,31 @@ export async function loadDataToEvents(indexedDbName, { onStatus = () => {} } = 
         return;
     }
 
-    eventValues = rows.map((row) => String(row[eventHeader] ?? ""));
+    const { validRows, invalidRows } = parseEventValues(rows, eventHeader);
+    eventRows = validRows;
+    eventHeaders = getEventHeaders(eventRows);
     currentPage = 0;
 
-    const headerRow = tableElement.createTHead().insertRow();
-    const headerCell = headerRow.insertCell();
-    headerCell.scope = "col";
-    headerCell.textContent = "Event Value";
+    if (invalidRows.length > 0) {
+        const warning = document.createElement("p");
+        warning.className = "events-warning";
+        warning.textContent = `${invalidRows.length} evento(s) omitido(s) porque su Event Value no es un objeto JSON válido.`;
+        tableElement.before(warning);
+        console.warn("Invalid Event Value rows omitted", invalidRows);
+    }
 
-    if (eventValues.length === 0) {
-        showMessage(tableElement, "The selected CSV file has no events.");
+    if (eventRows.length === 0) {
+        showMessage(tableElement, "No se encontraron eventos válidos para mostrar.");
+    } else if (eventHeaders.length === 0) {
+        showMessage(tableElement, "The selected CSV file has no event object keys.");
     } else {
+        const headerRow = tableElement.createTHead().insertRow();
+        eventHeaders.forEach((header) => {
+            const headerCell = document.createElement("th");
+            headerCell.scope = "col";
+            headerCell.textContent = header;
+            headerRow.append(headerCell);
+        });
         renderPage(tableElement);
         renderPagination(tableElement);
     }

@@ -366,6 +366,12 @@ input {
   background: rgba(255, 255, 255, 0.95);
 }
 
+.events-warning {
+  margin: 0 0 12px;
+  color: #8a5a00;
+  font-size: 12px;
+}
+
 #events-table thead th,
 #events-table tbody td {
   border: 1px solid var(--soft-border);
