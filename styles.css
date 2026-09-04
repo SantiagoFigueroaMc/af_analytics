@@ -360,6 +360,40 @@ input {
   background: rgba(222, 234, 255, 0.5);
 }
 
+#events-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: rgba(255, 255, 255, 0.95);
+}
+
+#events-table thead th,
+#events-table tbody td {
+  border: 1px solid var(--soft-border);
+  padding: 8px;
+  font-size: 12px;
+  line-height: 1.35;
+  text-align: left;
+}
+
+#events-table thead th {
+  background: var(--table-head);
+  color: var(--table-head-text);
+  font-weight: 700;
+}
+
+#events-table tbody td {
+  color: #2b3033;
+  background: rgba(255, 255, 255, 0.65);
+}
+
+#events-table tbody tr:nth-child(odd) td {
+  background: rgba(246, 248, 250, 0.75);
+}
+
+#events-table tbody tr:hover td {
+  background: rgba(222, 234, 255, 0.5);
+}
+
 .column-menu {
   margin: 0 0 12px;
   border: 1px solid rgba(156, 164, 172, 0.6);

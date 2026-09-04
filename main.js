@@ -5,6 +5,7 @@ import {
     renameDatabase,
 } from "./scripts/database.js";
 import { loadDataToTable } from "./scripts/table.js?v=3";
+import { loadDataToEvents } from "./scripts/events.js?v=1";
 
 const fileInput = document.querySelector("input#file-upload");
 const availableDbs = document.querySelector(".available-dbs");
@@ -102,9 +103,11 @@ function renderDatabases(databases) {
             try {
                 setAppStatus(`Abriendo ${buttonLabel}...`);
                 await loadDataToTable(databaseName, { onStatus: setAppStatus });
+                await loadDataToEvents(databaseName, { onStatus: setAppStatus });
                 loadedSuccessfully = true;
                 setSelectionStatus(buttonLabel);
                 document.querySelector('[data-view="table-view"]').disabled = false;
+                document.querySelector('[data-view="events-view"]').disabled = false;
                 setView("table-view");
             } catch (error) {
                 console.error("Error loading CSV data", error);
