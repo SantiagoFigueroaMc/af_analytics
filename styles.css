@@ -391,6 +391,11 @@ input {
   overflow: hidden;
 }
 
+.table-view details,
+.events-view details {
+  user-select: none;
+}
+
 .events-warning {
   margin: 0 0 12px;
   color: #8a5a00;
