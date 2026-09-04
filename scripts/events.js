@@ -6,6 +6,8 @@ const CELL_PREVIEW_LENGTH = 20;
 const MIN_COLUMN_WIDTH = 200;
 const NON_EMPTY_FILTER_VALUE = "__non-empty__";
 const COLUMN_CONFIG_PREFIX = "csv-event-column-config:";
+const ACTION_COLUMN_LABEL = "Acciones";
+const ACTION_COLUMN_WIDTH = 110;
 
 let eventRows = [];
 let eventHeaders = [];
@@ -75,9 +77,12 @@ function formatCellValue(value) {
 function showEventDetails(value) {
     const dialog = document.createElement("dialog");
     dialog.className = "event-details-dialog";
+    dialog.setAttribute("aria-label", "Detalle del evento");
 
     const content = document.createElement("pre");
-    content.textContent = value;
+    content.textContent = typeof value === "string"
+        ? value
+        : JSON.stringify(value, null, 2);
     const closeButton = document.createElement("button");
     closeButton.type = "button";
     closeButton.textContent = "Cerrar";
@@ -210,12 +215,26 @@ function renderPage(tableElement) {
 
     const start = currentPage * PAGE_SIZE;
     const filteredRows = applyFilters();
-    filteredRows.slice(start, start + PAGE_SIZE).forEach((eventRow) => {
+    const pageRows = filteredRows.slice(start, start + PAGE_SIZE);
+    if (pageRows.length === 0) {
+        showMessage(tableElement, "No hay eventos que coincidan con los filtros.", visibleHeaders.length + 1);
+        return;
+    }
+
+    pageRows.forEach((eventRow) => {
         const row = body.insertRow();
         visibleHeaders.forEach((header) => {
             const cell = row.insertCell();
             renderCell(cell, formatCellValue(eventRow[header]));
         });
+
+        const actionCell = row.insertCell();
+        const detailsButton = document.createElement("button");
+        detailsButton.type = "button";
+        detailsButton.className = "event-details-button event-row-details-button";
+        detailsButton.textContent = "Ver evento";
+        detailsButton.addEventListener("click", () => showEventDetails(eventRow));
+        actionCell.append(detailsButton);
     });
 }
 
@@ -241,7 +260,7 @@ function getColumnWidth(header) {
 function renderTableHeader(tableElement) {
     tableElement.tHead?.remove();
     const columnWidths = visibleHeaders.map((header) => getColumnWidth(header));
-    const tableWidth = columnWidths.reduce((total, width) => total + width, 0);
+    const tableWidth = columnWidths.reduce((total, width) => total + width, ACTION_COLUMN_WIDTH);
     const containerWidth = tableElement.closest(".container")?.clientWidth || 0;
     const renderedWidth = Math.max(tableWidth, containerWidth);
     tableElement.style.width = `${renderedWidth}px`;
@@ -296,6 +315,12 @@ function renderTableHeader(tableElement) {
         cell.append(filter);
         headerRow.append(cell);
     });
+
+    const actionHeader = document.createElement("th");
+    actionHeader.scope = "col";
+    actionHeader.style.width = `${ACTION_COLUMN_WIDTH}px`;
+    actionHeader.textContent = ACTION_COLUMN_LABEL;
+    headerRow.append(actionHeader);
 }
 
 function renderPagination(tableElement) {
