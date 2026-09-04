@@ -2,6 +2,7 @@ import { loadDatabase } from "./database.js";
 
 const PAGE_SIZE = 50;
 const MAX_CELL_LENGTH = 20;
+const MIN_COLUMN_WIDTH = 100;
 const COLUMN_CONFIG_PREFIX = "csv-event-column-config:";
 
 let eventRows = [];
@@ -222,13 +223,31 @@ function applyFilters() {
     )));
 }
 
+function getColumnWidth(header) {
+    const canvas = document.createElement("canvas");
+    const context = canvas.getContext("2d");
+    if (!context) {
+        return MIN_COLUMN_WIDTH;
+    }
+
+    context.font = "700 12px -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif";
+    return Math.max(MIN_COLUMN_WIDTH, Math.ceil(context.measureText(header).width) + 16);
+}
+
 function renderTableHeader(tableElement) {
     tableElement.tHead?.remove();
+    const columnWidths = visibleHeaders.map((header) => getColumnWidth(header));
+    const tableWidth = columnWidths.reduce((total, width) => total + width, 0);
+    const containerWidth = tableElement.closest(".container")?.clientWidth || 0;
+    const renderedWidth = Math.max(tableWidth, containerWidth);
+    tableElement.style.width = `${renderedWidth}px`;
+    tableElement.style.minWidth = `${renderedWidth}px`;
     const headerRow = tableElement.createTHead().insertRow();
 
-    visibleHeaders.forEach((header) => {
+    visibleHeaders.forEach((header, index) => {
         const cell = document.createElement("th");
         cell.scope = "col";
+        cell.style.width = `${columnWidths[index]}px`;
         cell.append(`${header} `);
 
         const filter = document.createElement("select");
