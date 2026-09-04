@@ -1,7 +1,8 @@
 import { loadDatabase } from "./database.js";
 
 const PAGE_SIZE = 20;
-const MAX_CELL_LENGTH = 20;
+const CELL_TRUNCATION_THRESHOLD = 30;
+const CELL_PREVIEW_LENGTH = 20;
 const ALL_FILTER_VALUE = "";
 const NON_EMPTY_FILTER_VALUE = "__non-empty__";
 const COLUMN_CONFIG_PREFIX = "csv-column-config:";
@@ -45,14 +46,14 @@ function showCellDetails(value) {
 }
 
 function renderCell(cell, value) {
-    if (value.length <= MAX_CELL_LENGTH) {
+    if (value.length <= CELL_TRUNCATION_THRESHOLD) {
         cell.textContent = value;
         return;
     }
 
     const preview = document.createElement("span");
     preview.className = "event-cell-preview";
-    preview.textContent = value.slice(0, MAX_CELL_LENGTH);
+    preview.textContent = value.slice(0, CELL_PREVIEW_LENGTH);
     const detailsButton = document.createElement("button");
     detailsButton.type = "button";
     detailsButton.className = "event-details-button";
